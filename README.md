@@ -6,7 +6,7 @@
 
 Інтерактивні сторінки з повзунками відкриваються просто в браузері, і на телефоні теж:
 
-- Епізод 1 «Що таке хвиля» — https://savka-stepan.github.io/qm-from-scratch/ep01/
+- [Епізод 1 «Що таке хвиля»](https://savka-stepan.github.io/qm-from-scratch/ep01/)
 
 ## Запуск коду
 

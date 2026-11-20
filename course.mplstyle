@@ -1,0 +1,26 @@
+# Course look for every example: dark background and the colours of the videos.
+# Use in a script: plt.style.use(Path(__file__).parent.parent / "course.mplstyle")
+
+figure.facecolor: 0e1220
+figure.edgecolor: 0e1220
+savefig.facecolor: 0e1220
+axes.facecolor: 0e1220
+axes.edgecolor: 3a4356
+axes.labelcolor: 9aa6bd
+axes.titlecolor: e8ecf6
+axes.titlesize: 12
+axes.spines.top: False
+axes.spines.right: False
+# wave (cyan), second wave (pink), energy (yellow), measure (violet), green
+axes.prop_cycle: cycler("color", ["5ad0ff", "ff6fae", "ffd54f", "b9a8ff", "8ce99a"])
+axes.grid: False
+grid.color: 2a3349
+
+text.color: e8ecf6
+xtick.color: 9aa6bd
+ytick.color: 9aa6bd
+
+lines.linewidth: 2.5
+font.family: sans-serif
+font.sans-serif: Inter, DejaVu Sans, Arial, sans-serif
+legend.frameon: False

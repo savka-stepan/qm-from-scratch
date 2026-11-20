@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Хвиля, що біжить</title>
+<meta name="description" content="Інтерактивна хвиля y = A·sin(kx − ωt) до епізоду 1 курсу «Квантова механіка з нуля».">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0e1220;
+    --panel: #161c2e;
+    --line: #2a3349;
+    --text: #e8ecf6;
+    --muted: #9aa6bd;
+    --wave: #5ad0ff;
+    --ribbon: #ff7a59;
+    --measure: #b9a8ff;
+    --energy: #ffd54f;
+    --rest: #3a4356;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 0 0 12px; }
+  .lead { color: var(--muted); margin: 0 0 20px; }
+  .formula { font-family: "Cambria Math", "STIX Two Math", Georgia, serif; font-style: italic; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  canvas { display: block; width: 100%; height: 300px; }
+  .readout { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 12px; font-variant-numeric: tabular-nums; }
+  .readout b { font-weight: 600; }
+  .row { display: grid; grid-template-columns: 10em 1fr 5.5em; grid-template-areas: "label slider value"; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .row label { grid-area: label; color: var(--muted); white-space: nowrap; }
+  .row input { grid-area: slider; }
+  .row output { grid-area: value; text-align: right; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--wave); }
+  .buttons { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  button {
+    font: inherit; color: var(--text); background: #222b42; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 14px; cursor: pointer;
+  }
+  button:hover { background: #2a3552; }
+  .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .calc input[type=number] {
+    width: 8em; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+  }
+  .result { margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .note { color: var(--muted); font-size: 0.9rem; }
+  .key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  a { color: var(--wave); }
+  @media (max-width: 560px) {
+    canvas { height: 220px; }
+    .row { grid-template-columns: 1fr auto; grid-template-areas: "label value" "slider slider"; gap: 4px 12px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Хвиля, що біжить</h1>
+  <p class="lead">До епізоду 1 курсу «Квантова механіка з нуля». Рухайте повзунки й дивіться, як змінюється хвиля
+    <span class="formula">y = A·sin(kx − ωt)</span>.</p>
+
+  <div class="card">
+    <canvas id="wave" aria-label="Анімація хвилі на мотузці"></canvas>
+    <div class="readout">
+      <span>t = <b id="t">0.0</b> с</span>
+      <span>T = 1/f = <b id="period"></b> с</span>
+      <span>v = λ·f = <b id="speed"></b> м/с</span>
+      <span>енергія ∝ A²: <b id="energy"></b> від енергії при A = 1</span>
+    </div>
+    <p class="note">
+      <span class="key" style="background: var(--ribbon)"></span>стрічка на мотузці: лише ходить угору-вниз, нікуди не їде.
+      <span class="key" style="background: var(--measure)"></span>λ — від гребеня до гребеня, A — висота гребеня.
+    </p>
+  </div>
+
+  <div class="card">
+    <div>
+      <div class="row">
+        <label for="amp">Амплітуда A</label>
+        <input id="amp" type="range" min="0.1" max="2" step="0.05" value="1">
+        <output id="ampOut" for="amp"></output>
+      </div>
+
+      <div class="row">
+        <label for="lam">Довжина хвилі λ</label>
+        <input id="lam" type="range" min="0.5" max="5" step="0.05" value="2">
+        <output id="lamOut" for="lam"></output>
+      </div>
+
+      <div class="row">
+        <label for="freq">Частота f</label>
+        <input id="freq" type="range" min="0.1" max="2" step="0.05" value="0.5">
+        <output id="freqOut" for="freq"></output>
+      </div>
+    </div>
+    <div class="buttons">
+      <button id="pause" type="button">Зупинити час (фото)</button>
+      <button id="reset" type="button">Скинути</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Порахуйте самі: <span class="formula">v = λ·f</span></h2>
+    <div class="calc">
+      <div>
+        <label>Звук у повітрі (v ≈ 343 м/с), частота
+          <input id="noteF" type="number" min="1" step="1" value="440"> Гц</label>
+        <div class="result">λ = v / f = <b id="noteL"></b></div>
+        <div class="note">440 Гц — нота «ля» першої октави.</div>
+      </div>
+      <div>
+        <label>Світло (v ≈ 300 000 км/с), довжина хвилі
+          <input id="lightL" type="number" min="1" step="1" value="550"> нм</label>
+        <div class="result">f = v / λ = <b id="lightF"></b></div>
+        <div class="note">550 нм — зелене світло; червоне ≈ 650 нм, фіолетове ≈ 400 нм.</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">Код на Python з тими самими повзунками — <a id="repo" href="https://github.com/">у репозиторії курсу</a>.</p>
+</main>
+
+<script>
+(() => {
+  const X_MAX = 10;        // metres shown
+  const Y_MAX = 2.4;       // half-height of the plot in amplitude units
+  const RIBBON_X = 3;      // the tracked point of the rope
+  const DEFAULTS = { amp: 1, lam: 2, freq: 0.5 };
+
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("wave");
+  const ctx = canvas.getContext("2d");
+  const css = getComputedStyle(document.documentElement);
+  const color = (name) => css.getPropertyValue(name).trim();
+  const sliders = { amp: $("amp"), lam: $("lam"), freq: $("freq") };
+
+  let angle = 0;           // accumulated ωt, so changing f never makes the wave jump
+  let time = 0;
+  let running = true;
+  let last = null;
+
+  const fmt = (v, d = 2) => v.toFixed(d).replace(".", ",");
+  const params = () => ({
+    amp: +sliders.amp.value, lam: +sliders.lam.value, freq: +sliders.freq.value,
+  });
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(canvas.clientWidth * dpr);
+    canvas.height = Math.round(canvas.clientHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function draw() {
+    const { amp, lam } = params();
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const pad = 24;
+    const sx = (x) => pad + (x / X_MAX) * (w - 2 * pad);
+    const sy = (y) => h / 2 - (y / Y_MAX) * (h / 2 - 12);
+    const k = (2 * Math.PI) / lam;
+    const y = (x) => amp * Math.sin(k * x - angle);
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineWidth = 1;
+
+    ctx.strokeStyle = color("--rest");
+    ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(X_MAX), sy(0)); ctx.stroke();
+
+    ctx.strokeStyle = color("--measure");
+    ctx.setLineDash([5, 6]);
+    for (const s of [1, -1]) {
+      ctx.beginPath(); ctx.moveTo(sx(0), sy(s * amp)); ctx.lineTo(sx(X_MAX), sy(s * amp)); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.fillStyle = color("--measure");
+    ctx.font = "15px Inter, system-ui, sans-serif";
+    ctx.textAlign = "end";
+    ctx.fillText("A", sx(X_MAX), sy(amp) - 6);
+    ctx.textAlign = "start";
+
+    // λ between two neighbouring crests: crests sit where kx − ωt = π/2 + 2πn.
+    let crest = (Math.PI / 2 + angle) / k;
+    crest -= Math.floor(crest / lam) * lam;
+    while (crest + lam > X_MAX) crest -= lam;
+    if (crest < 0.3) crest += lam;
+    if (crest + lam <= X_MAX) {
+      const top = sy(amp) - 16, a = sx(crest), b = sx(crest + lam);
+      ctx.strokeStyle = color("--measure");
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(a, top); ctx.lineTo(b, top);
+      ctx.moveTo(a + 7, top - 4); ctx.lineTo(a, top); ctx.lineTo(a + 7, top + 4);
+      ctx.moveTo(b - 7, top - 4); ctx.lineTo(b, top); ctx.lineTo(b - 7, top + 4);
+      ctx.stroke();
+      ctx.textAlign = "center";
+      ctx.fillText("λ", (a + b) / 2, top - 6);
+      ctx.textAlign = "start";
+    }
+
+    ctx.strokeStyle = color("--wave");
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i <= 600; i++) {
+      const x = (i / 600) * X_MAX;
+      i ? ctx.lineTo(sx(x), sy(y(x))) : ctx.moveTo(sx(x), sy(y(x)));
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle = color("--rest");
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx(RIBBON_X), sy(-amp)); ctx.lineTo(sx(RIBBON_X), sy(amp)); ctx.stroke();
+    ctx.fillStyle = color("--ribbon");
+    ctx.beginPath(); ctx.arc(sx(RIBBON_X), sy(y(RIBBON_X)), 8, 0, 2 * Math.PI); ctx.fill();
+
+    ctx.fillStyle = color("--muted");
+    ctx.textAlign = "end";
+    ctx.fillText("x, м →", w - pad, h - 8);
+    ctx.textAlign = "start";
+  }
+
+  function updateText() {
+    const { amp, lam, freq } = params();
+    $("ampOut").textContent = fmt(amp);
+    $("lamOut").textContent = fmt(lam) + " м";
+    $("freqOut").textContent = fmt(freq) + " Гц";
+    $("period").textContent = fmt(1 / freq);
+    $("speed").textContent = fmt(lam * freq);
+    $("energy").textContent = "×" + fmt(amp * amp);
+  }
+
+  function frame(now) {
+    if (last !== null && running) {
+      const dt = Math.min((now - last) / 1000, 0.1);
+      time += dt;
+      angle += 2 * Math.PI * params().freq * dt;
+      $("t").textContent = fmt(time, 1);
+    }
+    last = now;
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  function sci(v, unit) {
+    const e = Math.floor(Math.log10(v));
+    const m = v / 10 ** e;
+    const sup = String(e).replace(/[-0-9]/g, (c) => "⁻⁰¹²³⁴⁵⁶⁷⁸⁹"["-0123456789".indexOf(c)]);
+    return `${fmt(m)}·10${sup} ${unit}`;
+  }
+
+  function updateCalc() {
+    const f = +$("noteF").value;
+    const l = 343 / f;
+    $("noteL").textContent = f > 0 ? (l >= 1 ? fmt(l) + " м" : fmt(l * 100, 1) + " см") : "—";
+    const nm = +$("lightL").value;
+    $("lightF").textContent = nm > 0 ? sci(2.998e8 / (nm * 1e-9), "Гц") : "—";
+  }
+
+  Object.values(sliders).forEach((s) => s.addEventListener("input", updateText));
+  $("pause").addEventListener("click", () => {
+    running = !running;
+    $("pause").textContent = running ? "Зупинити час (фото)" : "Пустити час";
+  });
+  $("reset").addEventListener("click", () => {
+    for (const [key, value] of Object.entries(DEFAULTS)) sliders[key].value = value;
+    angle = 0; time = 0;
+    $("t").textContent = fmt(0, 1);
+    updateText();
+  });
+  $("noteF").addEventListener("input", updateCalc);
+  $("lightL").addEventListener("input", updateCalc);
+  window.addEventListener("resize", resize);
+
+  // On GitHub Pages (<user>.github.io/<repo>/ep01/) point the code link at this episode's folder.
+  if (location.hostname.endsWith(".github.io")) {
+    const user = location.hostname.split(".")[0];
+    const repo = location.pathname.split("/")[1];
+    $("repo").href = `https://github.com/${user}/${repo}/tree/main/ep01`;
+  }
+
+  resize();
+  updateText();
+  updateCalc();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дві щілини: смуги на екрані</title>
+<meta name="description" content="Інтерактивна картина двох щілин до епізоду 2 курсу «Квантова механіка з нуля».">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0e1220;
+    --panel: #161c2e;
+    --line: #2a3349;
+    --text: #e8ecf6;
+    --muted: #9aa6bd;
+    --wave: #5ad0ff;
+    --ribbon: #ff7a59;
+    --measure: #b9a8ff;
+    --energy: #ffd54f;
+    --rest: #3a4356;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 0 0 12px; }
+  .lead { color: var(--muted); margin: 0 0 20px; }
+  .formula { font-family: "Cambria Math", "STIX Two Math", Georgia, serif; font-style: italic; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  canvas { display: block; width: 100%; }
+  #wall { height: 70px; border-radius: 6px; }
+  #plot { height: 260px; margin-top: 12px; }
+  .toggle { display: flex; gap: 8px; align-items: center; margin-top: 16px; cursor: pointer; }
+  .readout { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 12px; font-variant-numeric: tabular-nums; }
+  .readout b { font-weight: 600; }
+  .row { display: grid; grid-template-columns: 10em 1fr 5.5em; grid-template-areas: "label slider value"; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .row label { grid-area: label; color: var(--muted); white-space: nowrap; }
+  .row input { grid-area: slider; }
+  .row output { grid-area: value; text-align: right; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--wave); }
+  .buttons { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  button {
+    font: inherit; color: var(--text); background: #222b42; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 14px; cursor: pointer;
+  }
+  button:hover { background: #2a3552; }
+  .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .calc input[type=number] {
+    width: 8em; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+  }
+  .result { margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .note { color: var(--muted); font-size: 0.9rem; }
+  .key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  a { color: var(--wave); }
+  @media (max-width: 560px) {
+    #plot { height: 200px; }
+    .row { grid-template-columns: 1fr auto; grid-template-areas: "label value" "slider slider"; gap: 4px 12px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Дві щілини: смуги на екрані</h1>
+  <p class="lead">До епізоду 2 курсу «Квантова механіка з нуля». Змінюйте довжину хвилі, відстань між щілинами та їхню
+    ширину й дивіться, як міняються смуги: <span class="formula">I = cos²(πd·sinθ/λ) · sinc²(πa·sinθ/λ)</span>.</p>
+
+  <div class="card">
+    <canvas id="wall" aria-label="Екран із смугами"></canvas>
+    <canvas id="plot" aria-label="Графік яскравості"></canvas>
+    <div class="readout">
+      <span>відстань між смугами Δy = λL/d = <b id="dy"></b></span>
+      <span>ширина плями 2λL/a = <b id="spot"></b></span>
+      <span>світлих смуг у плямі: <b id="count"></b></span>
+    </div>
+    <p class="note" id="missing"></p>
+    <p class="note">
+      <span class="key" id="keyMain"></span>яскравість на екрані (центральний пік двох щілин = 1).
+      <span class="key" style="background: var(--measure)"></span>штрихова лінія — одна щілина × 4: сама по собі вона дає лише ¼ піка.
+    </p>
+  </div>
+
+  <div class="card">
+    <div>
+      <div class="row">
+        <label for="lam">Довжина хвилі λ</label>
+        <input id="lam" type="range" min="400" max="700" step="1" value="650">
+        <output id="lamOut" for="lam"></output>
+      </div>
+      <div class="row">
+        <label for="gap">Між щілинами d</label>
+        <input id="gap" type="range" min="0.1" max="0.5" step="0.005" value="0.25">
+        <output id="gapOut" for="gap"></output>
+      </div>
+      <div class="row">
+        <label for="wid">Ширина щілини a</label>
+        <input id="wid" type="range" min="0.03" max="0.1" step="0.005" value="0.05">
+        <output id="widOut" for="wid"></output>
+      </div>
+      <div class="row">
+        <label for="dist">До екрана L</label>
+        <input id="dist" type="range" min="1" max="3" step="0.1" value="2">
+        <output id="distOut" for="dist"></output>
+      </div>
+    </div>
+    <label class="toggle"><input id="closed" type="checkbox"> Закрити одну щілину</label>
+    <p class="note">Закрийте одну щілину: світла стає вдвічі менше, але темні смуги раптом світліють. Показано одну щілину, її
+      яскравість — ¼ від піка двох.</p>
+    <div class="buttons">
+      <button id="reset" type="button">Скинути</button>
+    </div>
+  </div>
+
+  <p class="note">Код на Python з тими самими повзунками — <a id="repo" href="https://github.com/savka-stepan/qm-from-scratch/tree/main/ep02">у репозиторії курсу</a>.
+    Попередній епізод: <a href="../ep01/">«Що таке хвиля»</a>.</p>
+</main>
+
+<script>
+(() => {
+  const Y_MAX = 75; // half-width of the wall shown, mm: fixed, so a farther screen visibly widens fringes
+  const DEFAULTS = { lam: 650, gap: 0.25, wid: 0.05, dist: 2 };
+
+  const $ = (id) => document.getElementById(id);
+  const wallCanvas = $("wall"), plotCanvas = $("plot");
+  const css = getComputedStyle(document.documentElement);
+  const color = (name) => css.getPropertyValue(name).trim();
+  const sliders = { lam: $("lam"), gap: $("gap"), wid: $("wid"), dist: $("dist") };
+
+  const fmt = (v, d = 1) => v.toFixed(d).replace(".", ",");
+  const params = () => ({
+    lam: +sliders.lam.value, gap: +sliders.gap.value, wid: +sliders.wid.value, dist: +sliders.dist.value,
+    closed: $("closed").checked,
+  });
+
+  // Rough visible-spectrum colour of a wavelength (Bruton), RGB 0..255.
+  function wavelengthRGB(nm) {
+    let r = 0, g = 0, b = 0;
+    if (nm < 440) { r = (440 - nm) / 60; b = 1; }
+    else if (nm < 490) { g = (nm - 440) / 50; b = 1; }
+    else if (nm < 510) { g = 1; b = (510 - nm) / 20; }
+    else if (nm < 580) { r = (nm - 510) / 70; g = 1; }
+    else if (nm < 645) { r = 1; g = (645 - nm) / 65; }
+    else { r = 1; }
+    // The eye fades only beyond the ends of 420–700 nm.
+    const edge = nm < 420 ? 0.3 + 0.7 * (nm - 380) / 40 : nm > 700 ? 0.3 + 0.7 * (780 - nm) / 80 : 1;
+    return [r, g, b].map((c) => Math.round(255 * c * edge));
+  }
+
+  const sinc = (u) => (Math.abs(u) < 1e-9 ? 1 : Math.sin(Math.PI * u) / (Math.PI * u));
+
+  // Exact angle θ = atan(y/L). Returns [pattern shown, envelope = one slit × 4].
+  function intensity(yMm, p) {
+    const s = Math.sin(Math.atan((yMm * 1e-3) / p.dist));
+    const lam = p.lam * 1e-9;
+    const envelope = sinc((p.wid * 1e-3 * s) / lam) ** 2;
+    const two = Math.cos((Math.PI * p.gap * 1e-3 * s) / lam) ** 2 * envelope;
+    return [p.closed ? envelope / 4 : two, envelope];
+  }
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    for (const c of [wallCanvas, plotCanvas]) {
+      c.width = Math.round(c.clientWidth * dpr);
+      c.height = Math.round(c.clientHeight * dpr);
+      c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+  }
+
+  function draw() {
+    const p = params();
+    const [r, g, b] = wavelengthRGB(p.lam);
+    const col = `rgb(${r},${g},${b})`;
+    const pad = 36;
+    const yMax = Y_MAX;
+
+    const wctx = wallCanvas.getContext("2d");
+    const ww = wallCanvas.clientWidth, wh = wallCanvas.clientHeight;
+    wctx.clearRect(0, 0, ww, wh);
+    const px = pad, pw = ww - 2 * pad;
+    for (let i = 0; i < pw; i++) {
+      const [v] = intensity(((i / (pw - 1)) * 2 - 1) * yMax, p);
+      wctx.fillStyle = `rgb(${Math.round(r * v)},${Math.round(g * v)},${Math.round(b * v)})`;
+      wctx.fillRect(px + i, 0, 1.5, wh);
+    }
+
+    const ctx = plotCanvas.getContext("2d");
+    const w = plotCanvas.clientWidth, h = plotCanvas.clientHeight;
+    const top = 28, bottom = h - 30;
+    const sx = (y) => pad + ((y + yMax) / (2 * yMax)) * (w - 2 * pad);
+    const sy = (v) => bottom - v * (bottom - top);
+    ctx.clearRect(0, 0, w, h);
+    ctx.font = "14px Inter, system-ui, sans-serif";
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = color("--rest");
+    ctx.fillStyle = color("--muted");
+    ctx.beginPath(); ctx.moveTo(sx(-yMax), sy(0)); ctx.lineTo(sx(yMax), sy(0)); ctx.stroke();
+    // Faint guides at 1 (central peak of two slits) and ¼ (one slit alone).
+    ctx.strokeStyle = color("--line");
+    ctx.textAlign = "end";
+    for (const [v, text] of [[1, "1"], [0.25, "¼"]]) {
+      ctx.beginPath(); ctx.moveTo(pad, sy(v)); ctx.lineTo(w - pad, sy(v)); ctx.stroke();
+      ctx.fillText(text, pad - 6, sy(v) + 4);
+    }
+    ctx.strokeStyle = color("--rest");
+    ctx.textAlign = "center";
+    const step = yMax / 3;
+    for (let k = -3; k <= 3; k++) {
+      const t = k * step;
+      ctx.beginPath(); ctx.moveTo(sx(t), sy(0)); ctx.lineTo(sx(t), sy(0) + 4); ctx.stroke();
+      ctx.fillText(Math.round(t), sx(t), h - 14);
+    }
+    ctx.textAlign = "end";
+    ctx.fillText("y, мм →", w - 8, h - 4);
+    ctx.textAlign = "start";
+    ctx.fillText("яскравість", 8, 12);
+
+    const trace = (k, style, width, dash) => {
+      ctx.strokeStyle = style; ctx.lineWidth = width; ctx.setLineDash(dash);
+      ctx.beginPath();
+      const n = 2 * Math.round(plotCanvas.clientWidth); // ≥ 2 samples per pixel: no aliasing
+      for (let i = 0; i <= n; i++) {
+        const y = (i / n) * 2 * yMax - yMax;
+        const v = intensity(y, p)[k];
+        i ? ctx.lineTo(sx(y), sy(v)) : ctx.moveTo(sx(y), sy(v));
+      }
+      ctx.stroke(); ctx.setLineDash([]);
+    };
+    // The dashed envelope is one slit × 4; when a slit is closed the solid line is the real ¼ one.
+    trace(1, color("--measure"), 1.5, [5, 6]);
+    trace(0, `rgb(${[r, g, b].map((c) => Math.round((255 * c) / Math.max(r, g, b))).join(",")})`, 3, []);
+    $("keyMain").style.background = col;
+  }
+
+  function updateText() {
+    const p = params();
+    $("lamOut").textContent = fmt(p.lam, 0) + " нм";
+    $("gapOut").textContent = fmt(p.gap, 2) + " мм";
+    $("widOut").textContent = fmt(p.wid, 3) + " мм";
+    $("distOut").textContent = fmt(p.dist) + " м";
+    const dy = ((p.lam * 1e-9 * p.dist) / (p.gap * 1e-3)) * 1e3;
+    const spot = ((2 * p.lam * 1e-9 * p.dist) / (p.wid * 1e-3)) * 1e3;
+    $("dy").textContent = p.closed ? "— (одна щілина)" : fmt(dy) + " мм";
+    $("spot").textContent = fmt(spot / 10) + " см";
+    const ratio = p.gap / p.wid;
+    const count = 2 * (Math.ceil(ratio - 1e-9) - 1) + 1;
+    $("count").textContent = p.closed ? "— (одна щілина)" : count;
+    const lost = Math.abs(ratio - Math.round(ratio)) < 1e-9 && ratio >= 1;
+    $("missing").textContent = p.closed
+      ? "Одна щілина: інтерференційних смуг немає, лишається тільки дифракційна пляма, а її яскравість — ¼ від піка двох щілин."
+      : lost
+        ? `d/a = ${fmt(ratio, 0)}: порядки m = ±${fmt(ratio, 0)} випадають на нуль обвідної, тому світлих смуг у плямі: ${count}.`
+        : `d/a = ${fmt(ratio, 1)}: смуги порядків |m| < d/a лежать усередині плями, світлих смуг у плямі: ${count}.`;
+    draw();
+  }
+
+  Object.values(sliders).forEach((s) => s.addEventListener("input", updateText));
+  $("closed").addEventListener("change", updateText);
+  $("reset").addEventListener("click", () => {
+    for (const [key, value] of Object.entries(DEFAULTS)) sliders[key].value = value;
+    $("closed").checked = false;
+    updateText();
+  });
+  window.addEventListener("resize", () => { resize(); draw(); });
+
+  // On GitHub Pages (<user>.github.io/<repo>/ep02/) point the code link at this episode's folder.
+  if (location.hostname.endsWith(".github.io")) {
+    const user = location.hostname.split(".")[0];
+    const repo = location.pathname.split("/")[1];
+    $("repo").href = `https://github.com/${user}/${repo}/tree/main/ep02`;
+  }
+
+  resize();
+  updateText();
+})();
+</script>
+</body>
+</html>
